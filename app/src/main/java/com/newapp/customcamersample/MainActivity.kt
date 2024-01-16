@@ -1,6 +1,7 @@
 package com.newapp.customcamersample
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -11,8 +12,12 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture.OnImageCapturedCallback
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
+import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
+import androidx.camera.view.video.AudioConfig
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -24,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,22 +42,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.newapp.PhotoBottomSheetContent
 import com.newapp.customcamersample.ui.theme.CustomCamerSampleTheme
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (!hasRequiredPermissions()) {
-            ActivityCompat.requestPermissions(
-                this, CAMERAX_PERMISSIONS, 0
-            )
-        }
+
+        if (!hasPermissions()) requestPermissions()
         setContent {
             val scope = rememberCoroutineScope()
             CustomCamerSampleTheme {
@@ -134,6 +137,16 @@ class MainActivity : ComponentActivity() {
                                     contentDescription = "Take photo"
                                 )
                             }
+                            IconButton(
+                                onClick = {
+                                    recordVideo(controller)
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Videocam,
+                                    contentDescription = "Record video"
+                                )
+                            }
                         }
                     }
                 }
@@ -142,12 +155,42 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestPermissions() {
-        requestPermissions(CAMERAX_PERMISSIONS, 0)
+        requestPermissions(PERMISSIONS, 0)
     }
 
     private fun hasPermissions(): Boolean {
-        return CAMERAX_PERMISSIONS.all { permission ->
+        return PERMISSIONS.all { permission ->
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun recordVideo(controller: LifecycleCameraController) {
+
+
+        if (!hasPermissions()) return
+        if (recording != null) {
+            recording?.close()
+            recording = null
+            return
+        }
+
+        val file = File(filesDir, "recording.mp4")
+        recording = controller.startRecording(
+            FileOutputOptions.Builder(file).build(),
+            AudioConfig.create(true),
+            ContextCompat.getMainExecutor(applicationContext)
+        ) { event ->
+            when (event) {
+                is VideoRecordEvent.Finalize -> {
+                    recording?.close()
+                    recording = null
+                    if (event.hasError())
+                    println("Camera@@@: Video capture failed")
+                    else
+                    println("Camera@@@: Video capture successful")
+                }
+            }
         }
     }
 
@@ -194,7 +237,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun hasRequiredPermissions(): Boolean {
-        return CAMERAX_PERMISSIONS.all {
+        return PERMISSIONS.all {
             ContextCompat.checkSelfPermission(
                 applicationContext,
                 it
@@ -202,10 +245,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var recording: Recording? = null
     companion object {
-        private val CAMERAX_PERMISSIONS = arrayOf(
+        private val PERMISSIONS: Array<String> = arrayOf(
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
         )
     }
+
 }
