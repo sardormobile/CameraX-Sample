@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
         if (!hasPermissions()) requestPermissions()
         setContent {
             val scope = rememberCoroutineScope()
-            CustomCamerSampleTheme {
+            CustomCamerSampleTheme(darkTheme = true){
                 val scaffoldState = rememberBottomSheetScaffoldState()
                 val controller = remember {
                     LifecycleCameraController(applicationContext).apply {
@@ -186,9 +186,9 @@ class MainActivity : ComponentActivity() {
                     recording?.close()
                     recording = null
                     if (event.hasError())
-                    println("Camera@@@: Video capture failed")
+                        println("Camera@@@: Video capture failed")
                     else
-                    println("Camera@@@: Video capture successful")
+                        println("Camera@@@: Video capture successful")
                 }
             }
         }
@@ -246,6 +246,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private var recording: Recording? = null
+
     companion object {
         private val PERMISSIONS: Array<String> = arrayOf(
             Manifest.permission.CAMERA,
